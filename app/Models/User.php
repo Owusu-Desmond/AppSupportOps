@@ -40,4 +40,24 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Get the activities created by the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\App\Models\Activity>
+     */
+    public function activities(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Activity::class, 'created_by');
+    }
+
+    /**
+     * Get all status updates logged by the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<\App\Models\ActivityUpdate>
+     */
+    public function activityUpdates(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ActivityUpdate::class, 'user_id');
+    }
 }
