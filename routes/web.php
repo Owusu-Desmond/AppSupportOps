@@ -17,9 +17,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/activities', [ActivityController::class, 'store'])->name('activities.store');
     Route::patch('/activities/{activity}', [ActivityController::class, 'update'])->name('activities.update');
 
-    // Activity History – chronological full log
-    Route::get('/history', [ActivityController::class, 'history'])->name('activities.history');
-
     // Historical Reporting (Report)
     Route::get('/reports', [ActivityController::class, 'report'])->name('activities.report');
 

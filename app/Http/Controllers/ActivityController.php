@@ -135,5 +135,42 @@ class ActivityController extends Controller
             'grouped' => $activities,
         ]);
     }
+
+    /**
+     * Search activities by title, description, remarks, or creator name.
+     */
+    public function search(\Illuminate\Http\Request $request): \Illuminate\Http\JsonResponse
+    {
+        $q = trim((string) $request->input('q', ''));
+
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $activities = Activity::with([
+            'creator:id,name,email',
+            'latestUpdate.user:id,name,email',
+        ])
+        ->where(function ($query) use ($q) {
+            $query->where('title', 'like', "%{$q}%")
+                ->orWhere('description', 'like', "%{$q}%")
+                ->orWhereHas('creator', fn ($userQuery) => $userQuery->where('name', 'like', "%{$q}%"))
+                ->orWhereHas('updates', fn ($updateQuery) => $updateQuery->where('remarks', 'like', "%{$q}%"));
+        })
+        ->latest()
+        ->take(10)
+        ->get()
+        ->map(fn ($activity) => [
+            'id' => $activity->id,
+            'title' => $activity->title,
+            'description' => $activity->description,
+            'created_at' => $activity->created_at?->toFormattedDateString() ?? '',
+            'creator_name' => $activity->creator?->name ?? 'Unknown',
+            'status' => $activity->latestUpdate?->status ?? 'pending',
+            'remarks' => $activity->latestUpdate?->remarks,
+        ]);
+
+        return response()->json($activities);
+    }
 }
 

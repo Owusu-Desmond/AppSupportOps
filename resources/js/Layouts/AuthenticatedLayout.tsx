@@ -17,9 +17,10 @@ import {
     CheckCircle2,
     AlertCircle,
     X,
+    LogOut,
 } from 'lucide-react';
 
-/* ── Relative time helper ───────────────────────────────────────────── */
+/* Relative time helper */
 function relativeTime(dateStr: string): string {
     const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
     if (diff < 60) return 'just now';
@@ -28,7 +29,7 @@ function relativeTime(dateStr: string): string {
     return `${Math.floor(diff / 86400)}d ago`;
 }
 
-/* ── Notification Panel ─────────────────────────────────────────────── */
+/* Notification Panel  */
 function NotificationPanel({
     notifications,
     onClose,
@@ -137,7 +138,179 @@ function NotificationPanel({
     );
 }
 
-/* ── Main Layout ────────────────────────────────────────────────────── */
+/* ── Global Search Interface & Component ────────────────────────────── */
+interface SearchResult {
+    id: number;
+    title: string;
+    description?: string | null;
+    created_at: string;
+    creator_name: string;
+    status: 'pending' | 'done';
+    remarks?: string | null;
+}
+
+function GlobalSearchBar() {
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<SearchResult[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // Keyboard shortcut Cmd+K / Ctrl+K
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                inputRef.current?.focus();
+                setIsOpen(true);
+            }
+            if (e.key === 'Escape') {
+                setIsOpen(false);
+                inputRef.current?.blur();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    // Click outside handler
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Live search query with debounce
+    useEffect(() => {
+        const trimmed = query.trim();
+        if (trimmed.length < 2) {
+            setResults([]);
+            setIsLoading(false);
+            return;
+        }
+
+        setIsLoading(true);
+        const timer = setTimeout(() => {
+            fetch(`/activities/search?q=${encodeURIComponent(trimmed)}`)
+                .then((res) => res.json())
+                .then((data) => {
+                    setResults(data);
+                    setIsLoading(false);
+                    setIsOpen(true);
+                })
+                .catch(() => {
+                    setIsLoading(false);
+                });
+        }, 250);
+
+        return () => clearTimeout(timer);
+    }, [query]);
+
+    return (
+        <div ref={containerRef} className="relative hidden sm:block">
+            <div className="relative flex items-center">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={query}
+                    onChange={(e) => {
+                        setQuery(e.target.value);
+                        setIsOpen(true);
+                    }}
+                    onFocus={() => {
+                        if (query.trim().length >= 2) setIsOpen(true);
+                    }}
+                    placeholder="Search activities... (⌘K)"
+                    className="pl-9 pr-8 py-1.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-800 w-64 focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all"
+                />
+                {query ? (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setQuery('');
+                            setResults([]);
+                            setIsOpen(false);
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                        <X className="w-3.5 h-3.5" />
+                    </button>
+                ) : (
+                    <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-100 border border-slate-200 rounded">
+                        ⌘K
+                    </kbd>
+                )}
+            </div>
+
+            {/* Results Dropdown Overlay */}
+            {isOpen && query.trim().length >= 2 && (
+                <div className="absolute left-0 top-full mt-2 w-96 bg-white rounded-xl border border-slate-200 shadow-xl z-50 overflow-hidden max-h-96 flex flex-col">
+                    <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-500">
+                        <span>{isLoading ? 'Searching...' : `Results for "${query}"`}</span>
+                        <span>{results.length} found</span>
+                    </div>
+
+                    <div className="overflow-y-auto divide-y divide-slate-100">
+                        {isLoading ? (
+                            <div className="py-8 text-center text-xs text-slate-400 font-medium">
+                                Fetching activity logs...
+                            </div>
+                        ) : results.length === 0 ? (
+                            <div className="py-8 text-center text-xs text-slate-400 font-medium">
+                                No matching activities found.
+                            </div>
+                        ) : (
+                            results.map((item) => {
+                                const isDone = item.status === 'done';
+                                return (
+                                    <div
+                                        key={item.id}
+                                        onClick={() => setIsOpen(false)}
+                                        className="p-3.5 hover:bg-slate-50 transition-colors cursor-pointer"
+                                    >
+                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                            <span className="font-semibold text-sm text-slate-900 line-clamp-1">
+                                                {item.title}
+                                            </span>
+                                            <span
+                                                className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shrink-0 ${
+                                                    isDone
+                                                        ? 'bg-emerald-100 text-emerald-800'
+                                                        : 'bg-amber-100 text-amber-800'
+                                                }`}
+                                            >
+                                                {isDone ? 'DONE' : 'PENDING'}
+                                            </span>
+                                        </div>
+
+                                        {item.description && (
+                                            <p className="text-xs text-slate-500 line-clamp-1 mb-1">
+                                                {item.description}
+                                            </p>
+                                        )}
+
+                                        <div className="flex items-center justify-between text-[11px] text-slate-400">
+                                            <span>Logged by {item.creator_name}</span>
+                                            <span>{item.created_at}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* Main Layout  */
 export default function Authenticated({
     header,
     children,
@@ -184,14 +357,7 @@ export default function Authenticated({
 
                 {/* Right Header Utilities */}
                 <div className="flex items-center gap-5">
-                    <div className="relative hidden sm:block">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                        <input
-                            type="text"
-                            placeholder="Search..."
-                            className="pl-9 pr-4 py-1.5 border border-slate-200 rounded-md text-sm bg-white text-slate-700 w-56 focus:outline-none focus:border-slate-400"
-                        />
-                    </div>
+                    <GlobalSearchBar />
 
                     {/* Bell / Notifications */}
                     <div className="relative">
@@ -242,12 +408,125 @@ export default function Authenticated({
                     {/* Mobile Menu Toggle */}
                     <button
                         onClick={() => setShowingNavigationDropdown((prev) => !prev)}
-                        className="md:hidden p-2 text-slate-500 hover:text-slate-900"
+                        className="lg:hidden p-2 text-slate-500 hover:text-slate-900"
+                        aria-label="Toggle navigation"
                     >
-                        <Menu className="w-6 h-6" />
+                        {showingNavigationDropdown ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                     </button>
                 </div>
             </header>
+
+            {/* Mobile Sidebar Overlay / Drawer */}
+            {showingNavigationDropdown && (
+                <div className="fixed inset-0 z-50 lg:hidden flex">
+                    {/* Backdrop */}
+                    <div
+                        className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
+                        onClick={() => setShowingNavigationDropdown(false)}
+                    />
+
+                    {/* Drawer Content */}
+                    <div className="relative flex-1 max-w-xs w-full bg-[#f8fafc] flex flex-col z-10 shadow-2xl">
+                        <div className="p-5 border-b border-[#e2e8f0] flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-[#131b2e] flex items-center justify-center text-white font-bold text-base">
+                                    <Grid className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="font-bold text-base text-slate-900">Support Tracker</h2>
+                                    <p className="text-xs text-slate-500 font-medium">Enterprise Tier</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowingNavigationDropdown(false)}
+                                className="p-2 text-slate-400 hover:text-slate-700"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <nav className="flex-1 py-4 flex flex-col justify-between overflow-y-auto">
+                            <div className="space-y-6">
+                                <div>
+                                    <div className="px-5 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                        Main Navigation
+                                    </div>
+                                    <div className="space-y-0.5">
+                                        <Link
+                                            href={route('dashboard')}
+                                            onClick={() => setShowingNavigationDropdown(false)}
+                                            className={`flex items-center gap-3.5 px-5 py-2.5 text-sm font-medium transition-all ${isDashboard
+                                                ? 'bg-[#d0e1fb]/60 text-slate-900 border-l-4 border-slate-900 font-semibold'
+                                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-4 border-transparent'
+                                                }`}
+                                        >
+                                            <LayoutDashboard className="w-4 h-4" />
+                                            <span>Overview</span>
+                                        </Link>
+
+                                        <Link
+                                            href={route('activities.report')}
+                                            onClick={() => setShowingNavigationDropdown(false)}
+                                            className={`flex items-center gap-3.5 px-5 py-2.5 text-sm font-medium transition-all ${isReports
+                                                ? 'bg-[#d0e1fb]/60 text-slate-900 border-l-4 border-slate-900 font-semibold'
+                                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-4 border-transparent'
+                                                }`}
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                            <span>Reporting</span>
+                                        </Link>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div className="px-5 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                        Account & Settings
+                                    </div>
+                                    <div className="space-y-0.5">
+                                        <Link
+                                            href={route('profile.edit')}
+                                            onClick={() => setShowingNavigationDropdown(false)}
+                                            className={`flex items-center gap-3.5 px-5 py-2.5 text-sm font-medium transition-all ${route().current('profile.edit')
+                                                ? 'bg-[#d0e1fb]/60 text-slate-900 border-l-4 border-slate-900 font-semibold'
+                                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-4 border-transparent'
+                                                }`}
+                                        >
+                                            <Settings className="w-4 h-4" />
+                                            <span>Profile Settings</span>
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="px-4 my-4">
+                                <div className="rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs font-bold text-slate-700">System Status</span>
+                                        <span className="relative flex h-2 w-2">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] font-medium text-emerald-700">All Systems Operational</p>
+                                </div>
+                            </div>
+                        </nav>
+
+                        <div className="p-4 border-t border-[#e2e8f0]">
+                            <Link
+                                href={route('logout')}
+                                method="post"
+                                as="button"
+                                onClick={() => setShowingNavigationDropdown(false)}
+                                className="w-full bg-[#1e293b] hover:bg-black text-white h-10 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 shadow-2xs transition-colors"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                <span>Log Out</span>
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Left SideNavBar */}
@@ -264,54 +543,83 @@ export default function Authenticated({
                         </div>
                     </div>
 
-                    <nav className="flex-1 py-4 flex flex-col gap-1">
-                        <Link
-                            href={route('dashboard')}
-                            className={`flex items-center gap-3.5 px-5 py-3.5 text-sm font-medium transition-all ${isDashboard
-                                ? 'bg-[#d0e1fb]/60 text-slate-900 border-l-4 border-slate-900 font-semibold'
-                                : 'text-slate-600 hover:bg-slate-100'
-                                }`}
-                        >
-                            <LayoutDashboard className="w-4 h-4" />
-                            <span>Overview</span>
-                        </Link>
+                    <nav className="flex-1 py-4 flex flex-col justify-between overflow-y-auto">
+                        <div className="space-y-6">
+                            {/* Main Menu Section */}
+                            <div>
+                                <div className="px-5 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                    Main Navigation
+                                </div>
+                                <div className="space-y-0.5">
+                                    <Link
+                                        href={route('dashboard')}
+                                        className={`flex items-center gap-3.5 px-5 py-2.5 text-sm font-medium transition-all ${isDashboard
+                                            ? 'bg-[#d0e1fb]/60 text-slate-900 border-l-4 border-slate-900 font-semibold'
+                                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-4 border-transparent'
+                                            }`}
+                                    >
+                                        <LayoutDashboard className="w-4 h-4" />
+                                        <span>Overview</span>
+                                    </Link>
 
-                        <a href="#" className="flex items-center gap-3.5 px-5 py-3.5 text-sm font-medium text-slate-600 hover:bg-slate-100">
-                            <Ticket className="w-4 h-4" />
-                            <span>Active Tickets</span>
-                        </a>
+                                    <Link
+                                        href={route('activities.report')}
+                                        className={`flex items-center gap-3.5 px-5 py-2.5 text-sm font-medium transition-all ${isReports
+                                            ? 'bg-[#d0e1fb]/60 text-slate-900 border-l-4 border-slate-900 font-semibold'
+                                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-4 border-transparent'
+                                            }`}
+                                    >
+                                        <FileText className="w-4 h-4" />
+                                        <span>Reporting</span>
+                                    </Link>
+                                </div>
+                            </div>
 
-                        <a href="#" className="flex items-center gap-3.5 px-5 py-3.5 text-sm font-medium text-slate-600 hover:bg-slate-100">
-                            <Activity className="w-4 h-4" />
-                            <span>System Health</span>
-                        </a>
+                            {/* Account Section */}
+                            <div>
+                                <div className="px-5 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                    Account & Settings
+                                </div>
+                                <div className="space-y-0.5">
+                                    <Link
+                                        href={route('profile.edit')}
+                                        className={`flex items-center gap-3.5 px-5 py-2.5 text-sm font-medium transition-all ${route().current('profile.edit')
+                                            ? 'bg-[#d0e1fb]/60 text-slate-900 border-l-4 border-slate-900 font-semibold'
+                                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-l-4 border-transparent'
+                                            }`}
+                                    >
+                                        <Settings className="w-4 h-4" />
+                                        <span>Profile Settings</span>
+                                    </Link>
+                                </div>
+                            </div>
+                        </div>
 
-                        <a href="#" className="flex items-center gap-3.5 px-5 py-3.5 text-sm font-medium text-slate-600 hover:bg-slate-100">
-                            <Users className="w-4 h-4" />
-                            <span>Team Metrics</span>
-                        </a>
-
-                        <Link
-                            href={route('activities.report')}
-                            className={`flex items-center gap-3.5 px-5 py-3.5 text-sm font-medium transition-all ${isReports
-                                ? 'bg-[#d0e1fb]/60 text-slate-900 border-l-4 border-slate-900 font-semibold'
-                                : 'text-slate-600 hover:bg-slate-100'
-                                }`}
-                        >
-                            <FileText className="w-4 h-4" />
-                            <span>Reporting</span>
-                        </Link>
+                        {/* System Status Card */}
+                        <div className="px-4 my-4">
+                            <div className="rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs">
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="text-xs font-bold text-slate-700">System Status</span>
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                    </span>
+                                </div>
+                                <p className="text-[11px] font-medium text-emerald-700">All Systems Operational</p>
+                            </div>
+                        </div>
                     </nav>
 
-                    <div className="p-5 border-t border-[#e2e8f0]">
-                        <button
-                            type="button"
-                            onClick={() => window.dispatchEvent(new CustomEvent('open-create-modal'))}
-                            className="w-full bg-[#1e293b] hover:bg-black text-white h-11 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 shadow-xs transition-colors"
+                    <div className="p-4 border-t border-[#e2e8f0]">
+                        <Link
+                            href={route('logout')}
+                            method="post"
+                            as="button"
+                            className="w-full bg-[#1e293b] hover:bg-black text-white h-10 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 shadow-2xs transition-colors"
                         >
-                            <Plus className="w-4 h-4" />
-                            <span>Log New Activity</span>
-                        </button>
+                            <LogOut className="w-4 h-4" />
+                            <span>Log Out</span>
+                        </Link>
                     </div>
                 </aside>
 
