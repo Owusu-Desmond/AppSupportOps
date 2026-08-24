@@ -27,7 +27,7 @@ WORKDIR /app
 COPY . .
 
 # Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-scripts
+RUN composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs
 
 # Install Node dependencies and compile the React/Vite frontend
 RUN npm install
