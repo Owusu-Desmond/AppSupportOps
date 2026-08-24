@@ -1,10 +1,11 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import CreateActivityModal from '@/Components/CreateActivityModal';
 import UpdateActivityModal from '@/Components/UpdateActivityModal';
+import ViewActivityModal from '@/Components/ViewActivityModal';
 import { Activity, PageProps } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
-import { FileEdit, Pencil, CheckCircle2 } from 'lucide-react';
+import { FileEdit, Pencil, CheckCircle2, Eye } from 'lucide-react';
 
 interface Props {
     activities: Activity[];
@@ -16,6 +17,7 @@ export default function Dashboard({ activities = [], todayDate }: Props) {
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+    const [viewingActivity, setViewingActivity] = useState<Activity | null>(null);
 
     useEffect(() => {
         const handleOpenModal = () => setIsCreateOpen(true);
@@ -63,7 +65,7 @@ export default function Dashboard({ activities = [], todayDate }: Props) {
                     </button>
                 </div>
 
-                {/* Main Daily Handover Data Table matching Image 2 */}
+                {/* Main Daily Handover Data Table */}
                 <div className="rounded-xl border border-[#e2e8f0] bg-white shadow-xs overflow-hidden">
                     <table className="w-full text-left border-collapse text-sm">
                         <thead>
@@ -95,8 +97,8 @@ export default function Dashboard({ activities = [], todayDate }: Props) {
                                                 idx === activities.length - 1 ? 'border-l-4 border-slate-900' : ''
                                             }`}
                                         >
-                                            <td className="px-5 py-4">
-                                                <div className="font-semibold text-slate-900 text-sm">
+                                            <td className="px-5 py-4 cursor-pointer" onClick={() => setViewingActivity(activity)}>
+                                                <div className="font-semibold text-slate-900 text-sm hover:text-blue-600 transition-colors">
                                                     {activity.title}
                                                 </div>
                                                 {activity.description && (
@@ -139,14 +141,24 @@ export default function Dashboard({ activities = [], todayDate }: Props) {
                                             </td>
 
                                             <td className="px-5 py-4 whitespace-nowrap text-right">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setSelectedActivity(activity)}
-                                                    className="text-slate-400 hover:text-slate-900 transition-colors p-1.5 rounded-md hover:bg-slate-100"
-                                                    title="Edit Activity"
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </button>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setViewingActivity(activity)}
+                                                        className="text-slate-400 hover:text-slate-900 transition-colors p-1.5 rounded-md hover:bg-slate-100"
+                                                        title="View Handover Details"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedActivity(activity)}
+                                                        className="text-slate-400 hover:text-slate-900 transition-colors p-1.5 rounded-md hover:bg-slate-100"
+                                                        title="Edit Activity"
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -160,6 +172,12 @@ export default function Dashboard({ activities = [], todayDate }: Props) {
             {/* Modals */}
             <CreateActivityModal show={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
             <UpdateActivityModal activity={selectedActivity} show={!!selectedActivity} onClose={() => setSelectedActivity(null)} />
+            <ViewActivityModal
+                activity={viewingActivity}
+                show={!!viewingActivity}
+                onClose={() => setViewingActivity(null)}
+                onEdit={() => setSelectedActivity(viewingActivity)}
+            />
         </AuthenticatedLayout>
     );
 }

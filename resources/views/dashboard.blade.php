@@ -86,7 +86,7 @@
 <!-- Create Activity Modal (Stitch Design) -->
 <div id="create-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
     <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="document.getElementById('create-modal').classList.add('hidden')"></div>
-    <div class="relative bg-surface-container-lowest rounded-xl w-full max-w-lg custom-shadow flex flex-col z-10">
+    <div class="relative bg-surface-container-lowest rounded-xl w-full max-w-lg custom-shadow pt-2 flex flex-col z-10">
         <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant/30">
             <h2 class="font-headline-sm text-headline-sm text-on-surface">Log Support Activity</h2>
             <button onclick="document.getElementById('create-modal').classList.add('hidden')" class="text-secondary hover:text-on-surface" type="button">
