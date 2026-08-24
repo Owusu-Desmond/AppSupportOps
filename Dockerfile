@@ -1,7 +1,7 @@
 # Use the official PHP 8.2 CLI image
 FROM php:8.2-cli
 
-# Install system dependencies, Node.js, and PostgreSQL drivers (for Supabase)
+# Install system dependencies, Node.js, and PostgreSQL drivers
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     nodejs \
     npm
 
-# Install necessary PHP extensions
+# Install necessary PHP extensions for PostgreSQL
 RUN docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd
 
 # Get latest Composer
