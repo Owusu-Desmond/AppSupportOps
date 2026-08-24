@@ -27,7 +27,7 @@ WORKDIR /app
 COPY . .
 
 # Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader --no-scripts
 
 # Install Node dependencies and compile the React/Vite frontend
 RUN npm install
@@ -37,4 +37,4 @@ RUN npm run build
 EXPOSE $PORT
 
 # Start the Laravel built-in web server
-CMD php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
+CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
