@@ -63,14 +63,6 @@ export default function ReportsIndex({ activities = [], filters }: Props) {
                             <Download className="w-4 h-4" />
                             <span>CSV</span>
                         </button>
-
-                        <button
-                            type="button"
-                            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors"
-                        >
-                            <FileText className="w-4 h-4" />
-                            <span>PDF</span>
-                        </button>
                     </div>
                 </div>
 
@@ -163,11 +155,10 @@ export default function ReportsIndex({ activities = [], filters }: Props) {
 
                                                 <td className="px-5 py-4 whitespace-nowrap font-sans">
                                                     <span
-                                                        className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold tracking-wider uppercase ${
-                                                            isDone
+                                                        className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold tracking-wider uppercase ${isDone
                                                                 ? 'bg-[#dcfce7] text-[#166534]'
                                                                 : 'bg-[#fef3c7] text-[#92400e]'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {isDone ? 'SUCCESS' : 'PENDING'}
                                                     </span>

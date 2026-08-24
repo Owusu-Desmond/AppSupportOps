@@ -116,5 +116,24 @@ class ActivityController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Activity History – a chronological log of all activities across all days.
+     */
+    public function history(): Response
+    {
+        $activities = Activity::with([
+            'creator:id,name,email',
+            'latestUpdate.user:id,name,email',
+            'updates.user:id,name,email',
+        ])
+        ->latest()
+        ->get()
+        ->groupBy(fn ($a) => Carbon::parse($a->created_at)->toDateString());
+
+        return Inertia::render('Activities/History', [
+            'grouped' => $activities,
+        ]);
+    }
 }
 

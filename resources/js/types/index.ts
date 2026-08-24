@@ -17,7 +17,18 @@ export type PageProps<
         success?: string;
         error?: string;
     };
+    notifications?: Notification[];
 };
+
+export interface Notification {
+    id: number;
+    activity_id: number;
+    activity_title: string;
+    actor_name: string;
+    status: 'pending' | 'done';
+    remarks?: string | null;
+    created_at: string;
+}
 
 export interface ActivityUpdate {
     id: number;
